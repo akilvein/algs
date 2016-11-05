@@ -57,6 +57,14 @@ public:
 
         return mInverse[i] != -1;
     }
+    
+    PriorityKey get(int i) {
+        assert(i >= 0);
+        assert(i < (int)mKeys.size());
+        assert(contains(i));
+
+        return mKeys[i];
+    }
 
     void push(int i, PriorityKey key) {
         assert(i >= 0);
@@ -70,7 +78,7 @@ public:
         mSize++;
     }
 
-    int pop() {
+    pair<int, PriorityKey> pop() {
         assert(mSize);
 
         int min = mHeap[0];
@@ -78,7 +86,7 @@ public:
         sink(0);
         assert(min == mHeap[mSize]);
         mInverse[min] = -1;
-        return min;
+        return make_pair(min, mKeys[min]);
     }
 
     void decrease(int i, PriorityKey key) {
