@@ -7,7 +7,7 @@
 
 // Sedgewick-based priority queue for graph tasks
 template<typename PriorityKey>
-class indexedPQ {
+class IndexedPQ {
     std::vector<int> mHeap;
     std::vector<int> mInverse;
     std::vector<PriorityKey> mKeys;
@@ -45,7 +45,7 @@ class indexedPQ {
     }
 
 public:
-    indexedPQ(int n) : mHeap(n), mInverse(n, -1), mKeys(n) {}
+    IndexedPQ(int n) : mHeap(n), mInverse(n, -1), mKeys(n) {}
 
     bool notEmpty() {
         return mSize;
