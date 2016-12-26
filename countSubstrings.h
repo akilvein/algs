@@ -29,4 +29,6 @@ int countStringSuffixes(string s) {
     for (int i = 1; i < suffixes.size(); i++) {
         counter += (strlen(suffixes[i]) - commonPrefixLen(suffixes[i], suffixes[i - 1]));
     }
+    
+    return counter;
 }
