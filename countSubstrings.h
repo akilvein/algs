@@ -14,7 +14,7 @@ inline int commonPrefixLen(const char *s1, const char *s2) {
     return i;
 }
 
-int countStringSuffixes(string s) {
+int countDistinctSubstrings(string s) {
     vector<const char *> suffixes(s.size());
 
     for (int i = 0; i < s.size(); i++) {
