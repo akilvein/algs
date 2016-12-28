@@ -365,7 +365,7 @@ int movesToWhiteWin(const Board<ROWS, COLS> &board, int movesLimit, int movesDon
                     return -1;
                 }
 
-                newBoard.set(move, Figure(Figure::PAWN, movingColor));
+                newBoard.set(move, Figure(Figure::KNIGHT, movingColor));
                 result = movesToWhiteWin(newBoard, movesLimit, movesDone + 1, (Figure::Color)(1 - movingColor));
                 if (movingColor == Figure::WHITE && result >= 0) {
                     return result;
