@@ -1,9 +1,6 @@
 #include <iostream>
-#include <string>
 #include <vector>
 #include <algorithm>
-#include <set>
-#include <bitset>
 #include <cassert>
 
 using namespace std;
@@ -38,50 +35,6 @@ struct Figure {
 template <int ROWS, int COLS>
 struct Board {
     Figure cells[ROWS * COLS];
-
-    void print() const {
-        cout << "  ";
-        for (int c = 0; c < COLS; c++) {
-            cout << (char)('A' + c);
-        }
-        cout << endl;
-        cout << "  ";
-        for (int c = 0; c < COLS; c++) {
-            cout << "-";
-        }
-        cout << endl;
-
-        for (int r = 0; r < ROWS; r++) {
-            cout << r << "|";
-            for (int c = 0; c < COLS; c++) {
-                int i = r * COLS + c;
-                Figure f = cells[i];
-
-                if (f.color == Figure::WHITE) {
-                    switch (f.type) {
-                    case Figure::EMPTY: cout << ' '; break;
-                    case Figure::PAWN: cout << 'P'; break;
-                    case Figure::ROOK: cout << 'R'; break;
-                    case Figure::BISHOP: cout << 'B'; break;
-                    case Figure::KNIGHT: cout << 'N'; break;
-                    case Figure::QUEEN: cout << 'Q'; break;
-                    }
-                } else {
-                    switch (f.type) {
-                    case Figure::EMPTY: cout << ' '; break;
-                    case Figure::PAWN: cout << 'p'; break;
-                    case Figure::ROOK: cout << 'r'; break;
-                    case Figure::BISHOP: cout << 'b'; break;
-                    case Figure::KNIGHT: cout << 'n'; break;
-                    case Figure::QUEEN: cout << 'q'; break;
-                    }
-                }
-            }
-            cout << endl;
-        }
-
-        cout << endl;
-    }
 
     Figure::Color charToColor(const char color) {
         Figure::Color c;
@@ -223,8 +176,6 @@ struct Board {
     }
 
     inline bool shouldUpgrade(int pos) const {
-        //cout << "should upgrage pos: " << pos << " color: " << (int)cells[pos].color << " type: " << (int)cells[pos].type << endl;
-
         const int row = pos / COLS;
 
         if (cells[pos].type == Figure::PAWN && cells[pos].color == Figure::WHITE && row == ROWS - 1) {
@@ -312,12 +263,7 @@ struct Board {
 
 template <int ROWS, int COLS>
 int movesToWhiteWin(const Board<ROWS, COLS> &board, int movesLimit, int movesDone = 0, Figure::Color movingColor = Figure::WHITE) {
-    //cout << "==============" << endl;
-    //cout << (movingColor == Figure::WHITE ? "WHITE" : "BLACK") << " moves done: " << movesDone << endl;
-    //board.print();
-
     if (movesDone == movesLimit) {
-        //cout << "reached moves limit " << movesLimit << endl;
         return -1; // whites will not win
     }
 
@@ -330,18 +276,12 @@ int movesToWhiteWin(const Board<ROWS, COLS> &board, int movesLimit, int movesDon
             continue;
         }
 
-        //cout << "----moving " << (movingFigure.color == Figure::BLACK ? "BLACK " : "WHITE ") << (int)movingFigure.type << endl;
-
         board.getMoves(pos, moves);
-        //cout << "moves.size() " << moves.size() << endl;
         for (int move : moves) {
             const Figure &targetFigure = board.get(move);
-            //cout << "----target " << (targetFigure.color == Figure::BLACK ? "BLACK " : "WHITE ") << (int)targetFigure.type << endl;
 
             // capture queen!
             if (targetFigure.type == Figure::QUEEN) {
-                //cout << (movingColor == Figure::WHITE ? "WHITE" : "BLACK") << " ";
-                //cout << "targeting queen" << endl;
                 if (movingColor == Figure::WHITE) { // whites win
                     return movesDone;
                 } else { // blacks win
@@ -399,243 +339,9 @@ int movesToWhiteWin(const Board<ROWS, COLS> &board, int movesLimit, int movesDon
     }
 }
 
-template <int ROWS, int COLS>
-Board<ROWS, COLS> createTestBoard(vector<const char *> b) {
-    Board<ROWS, COLS> result;
-    // UPPERCASE are white, lowercase are black
-    for (int r = 0; r < ROWS; r++) {
-        for (int c = 0; c < COLS; c++) {
-            char type = b[r][c];
-            if (type == 'P') {
-                result.putFigure('P', 'W', r, c);
-            } else if (type == 'R') {
-                result.putFigure('R', 'W', r, c);
-            } else if (type == 'B') {
-                result.putFigure('B', 'W', r, c);
-            } else if (type == 'N') {
-                result.putFigure('N', 'W', r, c);
-            } else if (type == 'Q') {
-                result.putFigure('Q', 'W', r, c);
-            } else if (type == 'p') {
-                result.putFigure('p', 'b', r, c);
-            } else if (type == 'r') {
-                result.putFigure('r', 'b', r, c);
-            } else if (type == 'b') {
-                result.putFigure('b', 'b', r, c);
-            } else if (type == 'n') {
-                result.putFigure('n', 'b', r, c);
-            } else if (type == 'q') {
-                result.putFigure('q', 'b', r, c);
-            }
-        }
-    }
 
-    return result;
-}
-
-void compareMoves(vector<int> m1, vector<int> m2) {
-    sort(m1.begin(), m1.end());
-    sort(m2.begin(), m2.end());
-
-    assert(m1.size() == m2.size());
-    for (int i = 0; i < m1.size(); i++) {
-        assert(m1[i] == m2[i]);
-    }
-}
-
-template <int ROWS, int COLS>
-int posToIndex(int r, int c) {
-    assert(r >= 0);
-    assert(r < ROWS);
-    assert(c >= 0);
-    assert(c < COLS);
-
-    return r * COLS + c;
-}
-
-template <int ROWS, int COLS>
-vector<int> makeReferenceMoves(vector<const char *> b) {
-    vector<int> moves;
-
-    for (int r = 0; r < ROWS; r++) {
-        for (int c = 0; c < COLS; c++) {
-            char type = b[r][c];
-            if (type != ' ') {
-                moves.push_back(posToIndex<ROWS, COLS>(r, c));
-            }
-        }
-    }
-
-    return moves;
-}
-
-template <int ROWS, int COLS>
-void printMoves(const vector<int> &moves) {
-    cout << "  ";
-    for (int c = 0; c < COLS; c++) {
-        cout << (char)('A' + c);
-    }
-    cout << endl;
-    cout << "  ";
-    for (int c = 0; c < COLS; c++) {
-        cout << "-";
-    }
-    cout << endl;
-
-    for (int r = 0; r < ROWS; r++) {
-        cout << r << "|";
-        for (int c = 0; c < COLS; c++) {
-            int i = r * COLS + c;
-            bool found = false;
-            for (int m : moves) {
-                if (m == i) {
-                    cout << "X";
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                cout << " ";
-            }
-        }
-        cout << endl;
-    }
-
-    cout << endl;
-}
-
-template <int ROWS, int COLS>
-void printBoard(Board<ROWS, COLS> board) {
-    board.print();
-}
-
-void testBoard1() {
-    Board<4, 4> b = createTestBoard<4, 4>({"   P",
-                                           " Qr ",
-                                           "    ",
-                                           " p P"});
-
-    printBoard<4, 4>(b);
-
-    assert(!b.shouldUpgrade(posToIndex<4, 4>(3, 1)));
-    assert(!b.shouldUpgrade(posToIndex<4, 4>(0, 3)));
-    assert(b.shouldUpgrade(posToIndex<4, 4>(3, 3)));
-
-    // test white queen
-    vector<int> moves;
-    b.getMoves(posToIndex<4, 4>(1, 1), moves);
-
-    vector<int> refMoves = makeReferenceMoves<4, 4>({"XXX ",
-                                                     "X X ",
-                                                     "XXX ",
-                                                     " X  "});
-
-
-    compareMoves(moves, refMoves);
-
-    // test black rook
-    b.getMoves(posToIndex<4, 4>(1, 2), moves);
-    refMoves = makeReferenceMoves<4, 4>({"  X ",
-                                         " X X",
-                                         "  X ",
-                                         "  X "});
-
-    compareMoves(moves, refMoves);
-}
-
-
-void testBoard2() {
-    Board<4, 4> b = createTestBoard<4, 4>({"    ",
-                                           " Q  ",
-                                           "  p ",
-                                           "    "});
-
-    printBoard<4, 4>(b);
-
-    assert(!b.shouldUpgrade(posToIndex<4, 4>(2, 2)));
-
-    vector<int> moves;
-    b.getMoves(posToIndex<4, 4>(2, 2), moves);
-
-    vector<int> refMoves = makeReferenceMoves<4, 4>({"    ",
-                                                     " XX ",
-                                                     "    ",
-                                                     "    "});
-
-
-    compareMoves(moves, refMoves);
-}
-
-
-void testBoard3() {
-    Board<4, 4> b = createTestBoard<4, 4>({"    ",
-                                           "  p ",
-                                           "  p ",
-                                           "    "});
-
-    printBoard<4, 4>(b);
-
-    assert(!b.shouldUpgrade(posToIndex<4, 4>(2, 2)));
-
-    vector<int> moves;
-    b.getMoves(posToIndex<4, 4>(2, 2), moves);
-
-    vector<int> refMoves = makeReferenceMoves<4, 4>({"    ",
-                                                     "    ",
-                                                     "    ",
-                                                     "    "});
-
-
-    compareMoves(moves, refMoves);
-}
-
-void testBoard4() {
-    Board<4, 4> b = createTestBoard<4, 4>({"    ",
-                                           "    ",
-                                           "  N ",
-                                           "    "});
-
-    printBoard<4, 4>(b);
-
-    assert(!b.shouldUpgrade(posToIndex<4, 4>(2, 2)));
-
-    vector<int> moves;
-    b.getMoves(posToIndex<4, 4>(2, 2), moves);
-
-    vector<int> refMoves = makeReferenceMoves<4, 4>({" X X",
-                                                     "X   ",
-                                                     "    ",
-                                                     "X   "});
-
-
-    compareMoves(moves, refMoves);
-}
-
-void testBoard5() {
-    Board<4, 4> b = createTestBoard<4, 4>({" Q  ",
-                                           "    ",
-                                           " P  ",
-                                           "q   "});
-
-    printBoard<4, 4>(b);
-
-    assert(!b.shouldUpgrade(posToIndex<4, 4>(2, 1)));
-
-    vector<int> moves;
-    b.getMoves(posToIndex<4, 4>(2, 1), moves);
-
-    vector<int> refMoves = makeReferenceMoves<4, 4>({"    ",
-                                                     "    ",
-                                                     "    ",
-                                                     "XX  "});
-
-
-    compareMoves(moves, refMoves);
-}
-
-int main()
-{
-#ifdef _DEBUG
+int main() {
+#if 0
     freopen("input28.txt", "r", stdin);
     freopen("output28-my.txt", "w", stdout);
 #endif
@@ -657,12 +363,11 @@ int main()
             board.putFigure(type, (i < w) ? 'W' : 'B', row - 1, col - 'A');
         }
 
-        //printBoard<4, 4>(board);
-
         if (movesToWhiteWin<4, 4>(board, m) >= 0) {
             cout << "YES" << endl;
         } else {
             cout << "NO" << endl;
         }
     }
+
 }
