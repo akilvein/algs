@@ -294,34 +294,18 @@ int movesToWhiteWin(const Board<ROWS, COLS> &board, int movesLimit, int movesDon
             newBoard.set(pos, Figure());
             newBoard.set(move, movingFigure);
 
+            int result;
             if (newBoard.shouldUpgrade(move)) {
-                int result;
-
-                newBoard.set(move, Figure(Figure::ROOK, movingColor));
-                result = movesToWhiteWin(newBoard, movesLimit, movesDone + 1, (Figure::Color)(1 - movingColor));
-                if (movingColor == Figure::WHITE && result >= 0) {
-                    return result;
-                } else if (movingColor == Figure::BLACK && result < 0)  {
-                    return -1;
-                }
-
-                newBoard.set(move, Figure(Figure::KNIGHT, movingColor));
-                result = movesToWhiteWin(newBoard, movesLimit, movesDone + 1, (Figure::Color)(1 - movingColor));
-                if (movingColor == Figure::WHITE && result >= 0) {
-                    return result;
-                } else if (movingColor == Figure::BLACK && result < 0)  {
-                    return -1;
-                }
-
-                newBoard.set(move, Figure(Figure::BISHOP, movingColor));
-                result = movesToWhiteWin(newBoard, movesLimit, movesDone + 1, (Figure::Color)(1 - movingColor));
-                if (movingColor == Figure::WHITE && result >= 0) {
-                    return result;
-                } else if (movingColor == Figure::BLACK && result < 0)  {
-                    return -1;
+                for (int t = Figure::ROOK; t <= Figure::KNIGHT; t++) {
+                    newBoard.set(move, Figure((Figure::Type)t, movingColor));
+                    result = movesToWhiteWin(newBoard, movesLimit, movesDone + 1, (Figure::Color)(1 - movingColor));
+                    if (movingColor == Figure::WHITE && result >= 0) {
+                        return result;
+                    } else if (movingColor == Figure::BLACK && result < 0)  {
+                        return -1;
+                    }
                 }
             } else {
-                int result;
                 result = movesToWhiteWin(newBoard, movesLimit, movesDone + 1, (Figure::Color)(1 - movingColor));
                 if (movingColor == Figure::WHITE && result >= 0) {
                     return result;
@@ -341,7 +325,7 @@ int movesToWhiteWin(const Board<ROWS, COLS> &board, int movesLimit, int movesDon
 
 
 int main() {
-#if 0
+#if 1
     freopen("input28.txt", "r", stdin);
     freopen("output28-my.txt", "w", stdout);
 #endif
