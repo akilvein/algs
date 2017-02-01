@@ -116,7 +116,21 @@ struct Treap {
         }
 
         return make_pair(newLeft, newRight);
+    }
 
+    pair<Treap *, Treap *> splitByIndex(size_t i) {
+        Treap *newLeft = nullptr;
+        Treap *newRight = nullptr;
+
+        size_t leftSize = pLeft ? pLeft->size : 0;
+
+        if (leftSize < i) {
+
+        } else {
+
+        }
+
+        return make_pair(newLeft, newRight);
     }
 
 
@@ -211,3 +225,4 @@ int main() {
     cout << "Hello World!" << endl;
     return 0;
 }
+
