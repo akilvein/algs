@@ -10,9 +10,7 @@
 namespace std {
 
 template <typename KeyType, typename PriorityType>
-class Treap {
-
-public:
+struct Treap {
 
     struct Node {
 
@@ -73,6 +71,143 @@ public:
             if (pRight) {
                 size += pRight->size;
                 pRight->pParent = this;
+            }
+        }
+
+        static void update(Node *&tree) {
+            if (tree) {
+                tree->update();
+            }
+        }
+
+        static Node *build(const vector<KeyType> &keys, const vector<PriorityType> &priorities) {
+            assert(keys.size() == priorities.size());
+
+            Node *last = new Node(keys[0], priorities[0]);
+
+            for (size_t i = 1; i < keys.size(); i++) {
+                assert(keys[i - 1] <= keys[i]);
+
+                const KeyType &k = keys[i];
+                const PriorityType &p = priorities[i];
+
+                if (p < last->priority) {
+                    last->pRight = new Node(k, p, nullptr, nullptr, last);
+                    last = last->pRight;
+                } else {
+                    Node *current = last;
+
+                    while (current->pParent && current->priority <= p) {
+                        current = current->pParent;
+                    }
+
+                    if (current->priority <= p) {
+                        last = new Node(k, p, current, nullptr, nullptr);
+                    } else {
+                        last = new Node(k, p, current->pRight, nullptr, current);
+                        current->pRight = last;
+                    }
+
+                }
+            }
+
+            while (last->pParent) {
+                last = last->pParent;
+            }
+
+            last->recursiveCalcSize();
+
+            return last;
+        }
+
+        static void split(Node *&tree, const KeyType &key, Node *&left, Node *&right, bool greater = false) {
+            if (!tree) {
+                left = right = nullptr;
+            } else if ((key < tree->key) || (greater && key <= tree->key)) {
+                Node *newLeft;
+                split(tree->pLeft, key, left, newLeft, greater);
+                right = tree;
+                right->pLeft = newLeft;
+                update(right);
+            } else {
+                Node *newRight;
+                split(tree->pRight, key, newRight, right, greater);
+                left = tree;
+                left->pRight = newRight;
+                update(left);
+            }
+        }
+
+        static void merge(Node *&tree, Node *left, Node *right) {
+            if (!left) {
+                tree = right;
+            } else if (!right) {
+                tree = left;
+            } else if (left->priority > right->priority) {
+                merge(left->pRight, left->pRight, right);
+                tree = left;
+                tree->pParent = nullptr;
+                update(tree);
+            } else {
+                merge(right->pLeft, left, right->pLeft);
+                tree = right;
+                tree->pParent = nullptr;
+                update(tree);
+            }
+        }
+
+        static Node *remove(Node *&tree, const KeyType &k) {
+            Node *newLeft;
+            Node *newMedLeft;
+            Node *newRight;
+            Node *med;
+
+            split(tree, k, newMedLeft, newRight, false); // k elements go newMedLeft
+            split(newMedLeft, k, newLeft, med, true); // k go to med tree
+
+            merge(tree, newLeft, newRight);
+
+            return med;
+        }
+
+        static void insertLeft(Node *&tree, Node *node) {
+            assert(node->size == 1);
+
+            tree->size++;
+            if (tree->pLeft) {
+                insert(tree->pLeft, node);
+            } else {
+                tree->pLeft = node;
+                node->pParent = tree;
+            }
+        }
+
+        static void insertRight(Node *&tree, Node *node) {
+            assert(node->size == 1);
+
+            tree->size++;
+            if (tree->pRight) {
+                insert(tree->pRight, node);
+            } else {
+                tree->pRight = node;
+                node->pParent = tree;
+            }
+        }
+
+        static void insert(Node *&tree, Node *node) {
+            assert(node->size == 1);
+
+            if (node->priority > tree->priority) {
+                Node *newLeft;
+                Node *newRight;
+                node->pParent = tree->pParent;
+                split(tree, node->key, newLeft, newRight);
+                tree = node;
+                tree->update(node->key, node->priority, newLeft, newRight, node->pParent);
+            } else if (node->key <= tree->key) {
+                insertLeft(tree, node);
+            } else {
+                insertRight(tree, node);
             }
         }
 
@@ -184,158 +319,19 @@ public:
 
     };
 
-    static void update(Node *&tree) {
-        if (tree) {
-            tree->update();
-        }
-    }
-
-    static Node *build(const vector<KeyType> &keys, const vector<PriorityType> &priorities) {
-        assert(keys.size() == priorities.size());
-
-        Node *last = new Node(keys[0], priorities[0]);
-
-        for (size_t i = 1; i < keys.size(); i++) {
-            assert(keys[i - 1] <= keys[i]);
-
-            const KeyType &k = keys[i];
-            const PriorityType &p = priorities[i];
-
-            if (p < last->priority) {
-                last->pRight = new Node(k, p, nullptr, nullptr, last);
-                last = last->pRight;
-            } else {
-                Node *current = last;
-
-                while (current->pParent && current->priority <= p) {
-                    current = current->pParent;
-                }
-
-                if (current->priority <= p) {
-                    last = new Node(k, p, current, nullptr, nullptr);
-                } else {
-                    last = new Node(k, p, current->pRight, nullptr, current);
-                    current->pRight = last;
-                }
-
-            }
-        }
-
-        while (last->pParent) {
-            last = last->pParent;
-        }
-
-        last->recursiveCalcSize();
-
-        return last;
-    }
-
-    static void split(Node *&tree, const KeyType &key, Node *&left, Node *&right, bool greater = false) {
-        if (!tree) {
-            left = right = nullptr;
-        } else if ((key < tree->key) || (greater && key <= tree->key)) {
-            Node *newLeft;
-            split(tree->pLeft, key, left, newLeft, greater);
-            right = tree;
-            right->pLeft = newLeft;
-            update(right);
-        } else {
-            Node *newRight;
-            split(tree->pRight, key, newRight, right, greater);
-            left = tree;
-            left->pRight = newRight;
-            update(left);
-        }
-    }
-
-    static void merge(Node *&tree, Node *left, Node *right) {
-        if (!left) {
-            tree = right;
-        } else if (!right) {
-            tree = left;
-        } else if (left->priority > right->priority) {
-            merge(left->pRight, left->pRight, right);
-            tree = left;
-            tree->pParent = nullptr;
-            update(tree);
-        } else {
-            merge(right->pLeft, left, right->pLeft);
-            tree = right;
-            tree->pParent = nullptr;
-            update(tree);
-        }
-    }
-
-    static Node *remove(Node *&tree, const KeyType &k) {
-        Node *newLeft;
-        Node *newMedLeft;
-        Node *newRight;
-        Node *med;
-
-        split(tree, k, newMedLeft, newRight, false); // k elements go newMedLeft
-        split(newMedLeft, k, newLeft, med, true); // k go to med tree
-
-        merge(tree, newLeft, newRight);
-
-        return med;
-    }
-
-    static void insertLeft(Node *&tree, Node *node) {
-        assert(node->size == 1);
-
-        tree->size++;
-        if (tree->pLeft) {
-            insert(tree->pLeft, node);
-        } else {
-            tree->pLeft = node;
-            node->pParent = tree;
-        }
-    }
-
-    static void insertRight(Node *&tree, Node *node) {
-        assert(node->size == 1);
-
-        tree->size++;
-        if (tree->pRight) {
-            insert(tree->pRight, node);
-        } else {
-            tree->pRight = node;
-            node->pParent = tree;
-        }
-    }
-
-    static void insert(Node *&tree, Node *node) {
-        assert(node->size == 1);
-
-        if (node->priority > tree->priority) {
-            Node *newLeft;
-            Node *newRight;
-            node->pParent = tree->pParent;
-            split(tree, node->key, newLeft, newRight);
-            tree = node;
-            tree->update(node->key, node->priority, newLeft, newRight, node->pParent);
-        } else if (node->key <= tree->key) {
-            insertLeft(tree, node);
-        } else {
-            insertRight(tree, node);
-        }
-    }
-
     Node *pRoot = nullptr;
-
-public:
 
     Treap() {}
 
     Treap(const vector<KeyType> &keys, const vector<PriorityType> &priorities) {
-        pRoot = build(keys, priorities);
+        pRoot = Node::build(keys, priorities);
     }
 
     void add(const KeyType &k, const PriorityType &p) {
         Node *node = new Node(k, p);
 
         if (pRoot) {
-            insert(pRoot, node);
+            Node::insert(pRoot, node);
         } else {
             pRoot = node;
         }
@@ -343,9 +339,21 @@ public:
 
     void remove(const KeyType &k) {
         if (pRoot) {
-            Node *r = remove(pRoot, k);
+            Node *r = Node::remove(pRoot, k);
             delete(r);
         }
+    }
+
+    const KeyType &operator[] (size_t i) {
+        assert(pRoot);
+        assert(i < pRoot->size);
+
+        Node *p = pRoot->getElementByIndex(i);
+        return p->key;
+    }
+
+    bool isEmpty() {
+        return pRoot == nullptr;
     }
 
     void print() {
