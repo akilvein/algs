@@ -149,10 +149,6 @@ class Treap {
 
     Node *mpRoot = nullptr;
 
-    ~Treap() {
-        delete mpRoot;
-    }
-
 public:
     void insert(KeyType k, PriorityType p) {
         Node::insert(mpRoot, new Node(k, p));
