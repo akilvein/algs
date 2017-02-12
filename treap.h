@@ -2,10 +2,9 @@
 #define TREAP_H
 
 #include <iostream>
-#include <utility>
 #include <vector>
-#include <string>
 #include <cassert>
+#include <memory>
 
 namespace std {
 
@@ -19,14 +18,14 @@ class Treap {
         KeyType key;
         PriorityType priority;
 
-        Node *left = nullptr;
-        Node *right = nullptr;
+        unique_ptr<Node> left;
+        unique_ptr<Node> right;
         size_t size = 1;
 
         Node(KeyType k, PriorityType p) : key(k), priority(p) {
         }
 
-        static size_t getSize(Node *n) {
+        static size_t getSize(const unique_ptr<Node> &n) {
             return n ? n->size : 0;
         }
 
@@ -35,71 +34,110 @@ class Treap {
             size = 1 + getSize(left) + getSize(right);
         }
 
-        static void split(Node *tree, KeyType key, Node *&left, Node *&right) {
+        static void split(unique_ptr<Node> tree, KeyType key, unique_ptr<Node> &left, unique_ptr<Node> &right) {
             if (!tree) {
                 left = nullptr;
                 right = nullptr;
             } else if (key < tree->key) {
-                split(tree->left, key, left, tree->left);
+                split(move(tree->left), key, left, tree->left);
                 assert(tree);
-                right = tree;
+                right = move(tree);
                 right->recalc();
                 assert(left != right);
             } else {
-                split(tree->right, key, tree->right, right);
+                split(move(tree->right), key, tree->right, right);
                 assert(tree);
-                left = tree;
+                left = move(tree);
                 left->recalc();
                 assert(left != right);
             }
         }
 
-        static void insert(Node *&tree, Node *item) {
+        static void splitRight(unique_ptr<Node> tree, KeyType key, unique_ptr<Node> &left, unique_ptr<Node> &right) {
             if (!tree) {
-                tree = item;
-            } else if (item->priority > tree->priority) {
-                split(tree, item->key, item->left, item->right);
-                tree = item;
+                left = nullptr;
+                right = nullptr;
+            } else if (key <= tree->key) {
+                splitRight(move(tree->left), key, left, tree->left);
+                assert(tree);
+                right = move(tree);
+                right->recalc();
+                assert(left != right);
             } else {
-                insert(item->key < tree->key ? tree->left : tree->right, item);
+                splitRight(move(tree->right), key, tree->right, right);
+                assert(tree);
+                left = move(tree);
+                left->recalc();
+                assert(left != right);
+            }
+        }
+
+        static void insert(unique_ptr<Node> &tree, unique_ptr<Node> &item) {
+            if (!tree) {
+                tree = move(item);
+            } else if (item->priority > tree->priority) {
+                split(move(tree), item->key, item->left, item->right);
+                tree = move(item);
+            } else {
+                insert(item->key <= tree->key ? tree->left : tree->right, item);
             }
 
             tree->recalc();
         }
 
-        static void merge(Node *&tree, Node *left, Node *right) {
+        static void merge(unique_ptr<Node> &tree, unique_ptr<Node> left, unique_ptr<Node> right) {
             if (!left) {
-                tree = right;
+                tree = move(right);
             } else if (!right) {
-                tree = left;
+                tree = move(left);
             } else if (left->priority > right->priority) {
-                assert(left->key < right->key);
-                merge(left->right, left->right, right);
-                tree = left;
+                assert(left->key <= right->key);
+                merge(left->right, move(left->right), move(right));
+                tree = move(left);
                 assert(tree);
                 tree->recalc();
             } else {
-                assert(left->key < right->key);
-                merge(right->left, left, right->left);
-                tree = right;
+                assert(left->key <= right->key);
+                merge(right->left, move(left), move(right->left));
+                tree = move(right);
                 assert(tree);
                 tree->recalc();
             }
         }
 
-        static void remove(Node *&tree, KeyType key) {
+        static unique_ptr<Node> remove(unique_ptr<Node> &tree, KeyType key) {
             if (!tree) {
-                return;
+                return nullptr;
             }
 
             if (tree->key == key) {
-                merge(tree, tree->left, tree->right);
-            } else {
-                remove(key < tree->key ? tree->left : tree->right, key);
-                if (tree) {
-                    tree->recalc();
-                }
+                auto removedNode = move(tree);
+                merge(tree, move(removedNode->left), move(removedNode->right));
+                return removedNode;
             }
+
+            auto result = remove(key < tree->key ? tree->left : tree->right, key);
+            if (tree) {
+                tree->recalc();
+            }
+            return result;
+        }
+
+        static unique_ptr<Node> removeRange(unique_ptr<Node> &tree, KeyType key) {
+            if (!tree) {
+                return nullptr;
+            }
+
+            unique_ptr<Node> l;
+            unique_ptr<Node> r;
+            unique_ptr<Node> m;
+
+            split(move(tree), key, l, r);
+            splitRight(move(l), key, l, m);
+
+            merge(tree, move(l), move(r));
+
+            return m;
         }
 
         Node *getByIndex(size_t i) {
@@ -147,15 +185,21 @@ class Treap {
         }
     };
 
-    Node *mpRoot = nullptr;
+    unique_ptr<Node> mpRoot;
 
 public:
+
     void insert(KeyType k, PriorityType p) {
-        Node::insert(mpRoot, new Node(k, p));
+        auto i = unique_ptr<Node>(new Node(k, p));
+        Node::insert(mpRoot, i);
     }
 
-    void remove(KeyType key) {
-        Node::remove(mpRoot, key);
+    bool remove(KeyType key) {
+        return Node::remove(mpRoot, key).get();
+    }
+
+    bool removeRange(KeyType key) {
+        return Node::removeRange(mpRoot, key).get();
     }
 
     size_t size() const {
@@ -194,6 +238,27 @@ class TreapTester {
         }
         cout << "================" << endl;
     }
+
+    template <typename KeyType, typename PriorityType>
+    static void getKeys(const unique_ptr<typename Treap<KeyType, PriorityType>::Node> &n, vector<KeyType> &out) {
+        if (!n) {
+            return;
+        }
+
+        getKeys<KeyType, PriorityType>(n->left, out);
+
+        out.push_back(n->key);
+
+        getKeys<KeyType, PriorityType>(n->right, out);
+    }
+
+    template <typename KeyType, typename PriorityType>
+    static vector<KeyType> getKeys(const Treap<KeyType, PriorityType> &t) {
+        vector<KeyType> out;
+        getKeys<KeyType, PriorityType>(t.mpRoot, out);
+        return out;
+    }
+
 public:
     static void t1() {
         Treap<int, int> t;
@@ -220,7 +285,7 @@ public:
         assert(t[3] == 8);
         assert(t[4] == 9);
 
-        t.remove(0);
+        assert(!t.remove(0));
         assert(t.size() == 5);
 
         t.remove(1);
@@ -278,9 +343,111 @@ public:
         cout << "t2 passed" << endl;
     }
 
+    static void t3() {
+        Treap<int, int> t;
+
+        t.insert(1, rand());
+        t.insert(2, rand());
+        t.insert(3, rand());
+        t.insert(4, rand());
+        t.insert(5, rand());
+        t.insert(6, rand());
+        t.insert(7, rand());
+        t.insert(8, rand());
+
+        t.insert(3, rand());
+        t.insert(3, rand());
+        t.insert(3, rand());
+        t.insert(3, rand());
+
+        assert(t.size() == 12);
+
+        unique_ptr<Treap<int, int>::Node> l;
+        unique_ptr<Treap<int, int>::Node> r;
+
+        Treap<int, int>::Node::split(move(t.mpRoot), 3, l, r);
+
+        vector<int> lKeys;
+        getKeys<int, int>(l, lKeys);
+        assert(lKeys == vector<int>({1, 2, 3, 3, 3, 3, 3}));
+
+        vector<int> rKeys;
+        getKeys<int, int>(r, rKeys);
+        assert(rKeys == vector<int>({4, 5, 6, 7, 8}));
+
+        cout << "t3 passed" << endl;
+    }
+
+    static void t4() {
+        Treap<int, int> t;
+
+        t.insert(1, rand());
+        t.insert(2, rand());
+        t.insert(3, rand());
+        t.insert(4, rand());
+        t.insert(5, rand());
+        t.insert(6, rand());
+        t.insert(7, rand());
+        t.insert(8, rand());
+
+        t.insert(3, rand());
+        t.insert(3, rand());
+        t.insert(3, rand());
+        t.insert(3, rand());
+
+        assert(t.size() == 12);
+
+        unique_ptr<Treap<int, int>::Node> l;
+        unique_ptr<Treap<int, int>::Node> r;
+
+        Treap<int, int>::Node::splitRight(move(t.mpRoot), 3, l, r);
+
+        vector<int> lKeys;
+        getKeys<int, int>(l, lKeys);
+
+        assert(lKeys == vector<int>({1, 2}));
+
+        vector<int> rKeys;
+        getKeys<int, int>(r, rKeys);
+        assert(rKeys == vector<int>({3, 3, 3, 3, 3, 4, 5, 6, 7, 8}));
+
+        cout << "t4 passed" << endl;
+    }
+
+    static void t5() {
+        Treap<int, int> t;
+
+        t.insert(3, rand());
+        t.insert(4, rand());
+        t.insert(5, rand());
+        t.insert(1, rand());
+        t.insert(2, rand());
+        t.insert(6, rand());
+        t.insert(3, rand());
+        t.insert(3, rand());
+        t.insert(8, rand());
+        t.insert(7, rand());
+        t.insert(3, rand());
+        t.insert(3, rand());
+
+        assert(t.size() == 12);
+
+        t.removeRange(3);
+        vector<int> keys = getKeys(t);
+        assert(keys.size() == 7);
+
+        assert(keys == vector<int>({1, 2, 4, 5, 6, 7, 8}));
+
+        cout << "t5 passed" << endl;
+    }
+
+
     static void main() {
         t1();
         t2();
+        t3();
+        t4();
+        t5();
 
         cout << "cool!" << endl;
     }
