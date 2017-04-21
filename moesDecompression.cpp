@@ -5,98 +5,79 @@
 
 using namespace std;
 
-template <typename T, typename R>
-class Decompressor {
-    struct query {
-        pair<int, int> range;
-        size_t number;
-        R result;
-    };
+struct Query {
+    int l; // left query-segment bound
+    int r; // right query-segment bound (not included)
+    int number; // this field is used to restore inintial query order
 
-    vector<query> queries;
+    // add your fields here
+    int result;
+};
 
-    struct Mo {
-        int blockSize;
 
-        bool operator()(const query &q1, const query &q2) const {
-            if (q1.range.first / blockSize != q2.range.first / blockSize) {
-                return q1.range.first / blockSize < q2.range.first / blockSize;
+struct Mo {
+    vector<int> votesForId;
+    vector<int> idsVorVote;
+
+    void addItem(int item) {
+        // add item to current segment
+    }
+
+    void removeItem(int item) {
+        // remove item from current segment
+    }
+    
+    void saveResult(Query &q) {
+        // save result for current segment (current query)
+    }
+    
+
+    Mo(vector<int> &data, vector<Query> &queries) {
+        sort(queries.begin(), queries.end(),
+             [=](const Query& q1, const Query& q2)
+        {
+            if (q1.l / blockSize != q2.l / blockSize) {
+                return q1.l / blockSize < q2.l / blockSize;
             }
 
-            return q1.range.second < q2.range.second;
-        }
+            return q1.r < q2.r;
+        });
 
-        Mo(int bSize) : blockSize(bSize) {}
-    };
-
-    struct Naive {
-        bool operator()(const query &q1, const query &q2) const {
-            return q1.range < q2.range;
-        }
-    };
-
-    struct Restore {
-        bool operator()(const query &q1, const query &q2) const {
-            return q1.number < q2.number;
-        }
-    };
-
-    /// add your logic here!
-    int addItem(int r, const int &item) const {
-        return r + item;
-    }
-
-    /// add your logic here!
-    int removeItem(int r, const int &item) const {
-        return r - item;
-    }
-
-public:
-    const R &getAnswer(int i) const {
-        return queries[i].result;
-    }
-
-    Decompressor(const vector<T> &data, const vector<pair<int, int> > &q) : queries(q.size()) {
-        for (size_t i = 0; i < q.size(); i++) {
-            queries[i] = {q[i], i, R()};
-        }
-
-        sort(queries.begin(), queries.end(), Mo(sqrt(data.size())));
-        //sort(queries.begin(), queries.end(), Naive());
-
-
-        size_t begin = 0;
-        size_t end = 0;
-        R result = R();
+        int begin = 0;
+        int end = 0;
         // do the job
-        for (size_t i = 0; i < queries.size(); i++) {
-            size_t qBegin = queries[i].range.first;
-            size_t qEnd = queries[i].range.second;
+        for (int i = 0; i < (int)queries.size(); i++) {
+            int qBegin = queries[i].l;
+            int qEnd = queries[i].r;
 
+            while (end < qEnd) {
+                addItem(data[end]);
+                end++;
+            }
+            
             while (begin < qBegin) {
-                result = removeItem(result, data[begin]);
+                removeItem(data[begin]);
                 begin++;
             }
 
             while (begin > qBegin) {
                 begin--;
-                result = addItem(result, data[begin]);
-            }
-
-            while (end < qEnd) {
-                result = addItem(result, data[end]);
-                end++;
+                addItem(data[begin]);
             }
 
             while (end > qEnd) {
                 end--;
-                result = removeItem(result, data[end]);
+                removeItem(data[end]);
             }
 
-            queries[i].result = result;
+            saveResult(queries[i]);
         }
 
-        sort(queries.begin(), queries.end(), Restore());
+        sort(queries.begin(), queries.end(),
+             [](const Query &q1, const Query &q2) {
+            return q1.number < q2.number;
+        });
+        
     }
 };
 
@@ -105,7 +86,7 @@ int main(int argc, char *argv[])
     cout << "Hello World!" << endl;
 
     vector<int> data = {0, 2, 5, 1, 7, 9, 0, 4, 2, 8};
-    vector<pair<int, int> > queries = {
+    vector<Query> queries = {
         {1, 2},
         {0, 9},
         {8, 9},
@@ -113,10 +94,10 @@ int main(int argc, char *argv[])
         {4, 6}
     };
 
-    Decompressor<int, int> d(data, queries);
+    Mo mo(data, queries);
 
     for (int i = 0; i < (int)queries.size(); i++) {
-        cout << "[" << queries[i].first << "-" << queries[i].second << ") - " << d.getAnswer(i) << endl;
+        cout << "[" << queries[i].first << "-" << queries[i].second << ") - " << queries[i].result << endl;
     }
 
     return 0;
